@@ -1,0 +1,9 @@
+logs/*.json
+logs/plots/
+checkpoints/
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+!logs/.gitkeep
+!checkpoints/.gitkeep

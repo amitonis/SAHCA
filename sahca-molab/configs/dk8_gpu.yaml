@@ -1,0 +1,26 @@
+# DoorKey-8x8 GPU-only (1M steps)
+# All methods failed at 500K steps (cold-start trap).
+# 1M steps only feasible on GPU (~6 min estimated).
+
+env:
+  name: "MiniGrid-DoorKey-8x8-v0"
+  fixed_seed: null
+  dense_reward: true
+
+training:
+  group_size: 64
+  total_env_steps: 1000000
+  eval_episodes: 100
+  eval_interval: 20000
+
+policy:
+  obs_dim: 151
+  hidden_dim: 256
+  action_dim: 7
+
+credit_assignment:
+  similarity_threshold: 0.9
+  cross_trajectory_only: true
+  alpha: 0.0
+  beta: 1.0
+  gamma: 0.0

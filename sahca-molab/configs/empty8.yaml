@@ -1,0 +1,25 @@
+# Empty-8x8 (sanity check, too easy -- all methods saturate)
+# 100K steps is sufficient.
+
+env:
+  name: "MiniGrid-Empty-8x8-v0"
+  fixed_seed: null
+  dense_reward: false  # No DoorKey reward shaping needed for empty env
+
+training:
+  group_size: 64
+  total_env_steps: 100000
+  eval_episodes: 100
+  eval_interval: 5000
+
+policy:
+  obs_dim: 151
+  hidden_dim: 256
+  action_dim: 7
+
+credit_assignment:
+  similarity_threshold: 0.9
+  cross_trajectory_only: true
+  alpha: 0.0
+  beta: 1.0
+  gamma: 0.0

@@ -1,0 +1,27 @@
+# DoorKey-6x6 Randomized Layout
+# THE CRITICAL EXPERIMENT: tests generalization under procedural variability.
+# Expected: exact-hash methods (GiGPO/GAGPO) collapse, SAHCA-Micro should retain performance.
+# 300K steps, 64 group size for GPU.
+
+env:
+  name: "MiniGrid-DoorKey-6x6-v0"
+  fixed_seed: null  # null = randomized layouts each reset
+  dense_reward: true
+
+training:
+  group_size: 64
+  total_env_steps: 300000
+  eval_episodes: 100
+  eval_interval: 10000
+
+policy:
+  obs_dim: 151
+  hidden_dim: 256
+  action_dim: 7
+
+credit_assignment:
+  similarity_threshold: 0.9
+  cross_trajectory_only: true
+  alpha: 0.0
+  beta: 1.0
+  gamma: 0.0
