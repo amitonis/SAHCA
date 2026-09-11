@@ -110,6 +110,40 @@ def run_experiment(mo):
     method = "sahca"
     seeds = 5
 
+    # Get working directory
+    cwd = os.getcwd()
+
+    mo.output.replace(
+        mo.vstack([
+            mo.md("## Running P1 Experiment (DoorKey-6x6 Randomized)"),
+            mo.md(f"**Working Directory:** `{cwd}`"),
+            mo.md(f"**Config Path:** `{config_path}`"),
+            mo.md(""),
+            mo.md("Checking for required files..."),
+        ])
+    )
+
+    # Check if config exists
+    config_full_path = os.path.join(cwd, config_path)
+    if os.path.exists(config_full_path):
+        mo.output.replace(
+            mo.vstack([
+                mo.md("## Running P1 Experiment (DoorKey-6x6 Randomized)"),
+                mo.md(f"**Config found at:** `{config_full_path}`"),
+                mo.md("Starting experiment..."),
+            ])
+        )
+    else:
+        mo.output.replace(
+            mo.vstack([
+                mo.md(f"## ❌ Config not found"),
+                mo.md(f"Looking for: `{config_full_path}`"),
+                mo.md("Files in current directory:"),
+                mo.md(f"```\n{os.listdir(cwd)}\n```"),
+            ])
+        )
+        return
+
     cmd = [
         sys.executable, "-m", "experiments.run_multiseed",
         "--config", config_path,
@@ -118,20 +152,12 @@ def run_experiment(mo):
         "--resume",
     ]
 
-    mo.output.replace(
-        mo.vstack([
-            mo.md("## Running P1 Experiment (DoorKey-6x6 Randomized)"),
-            mo.md(f"**Command:** `{' '.join(cmd)}`"),
-            mo.md("Please wait..."),
-        ])
-    )
-
     try:
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
-            cwd=os.path.dirname(os.path.abspath(__file__)),
+            cwd=cwd,
         )
         output = result.stdout + "\n" + result.stderr
         status = "✅ Complete" if result.returncode == 0 else "❌ Failed"
