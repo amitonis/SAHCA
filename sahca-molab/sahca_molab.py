@@ -107,42 +107,48 @@ def run_experiment(mo, config_dropdown, method_dropdown, seeds_slider):
 
     run_button = mo.ui.run_button(label="🚀 Run Experiment")
     mo.output.replace(run_button)
-
-    # Wait for button click
-    if run_button.value:
-        config_path = config_dropdown.value
-        method = method_dropdown.value
-        seeds = seeds_slider.value
-
-        cmd = [
-            sys.executable, "-m", "experiments.run_multiseed",
-            "--config", config_path,
-            "--method", method,
-            "--seeds", str(seeds),
-            "--resume",
-        ]
-
-        mo.output.replace(mo.md(f"**Running:** `{' '.join(cmd)}`\n\nPlease wait..."))
-
-        try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                cwd=os.path.dirname(os.path.abspath(__file__)),
-            )
-            output = result.stdout + "\n" + result.stderr
-            status = "✅ Complete" if result.returncode == 0 else "❌ Failed"
-            mo.output.replace(
-                mo.vstack([
-                    mo.md(f"## {status}"),
-                    mo.md(f"```\n{output[-5000:]}\n```"),  # Last 5000 chars
-                ])
-            )
-        except Exception as e:
-            mo.output.replace(mo.md(f"## ❌ Error\n```\n{str(e)}\n```"))
-
     return run_button, subprocess, sys, os
+
+
+@app.cell
+def execute_run(mo, run_button, config_dropdown, method_dropdown, seeds_slider, subprocess, sys, os):
+    if not run_button.value:
+        mo.output.replace(mo.md("*Click the Run button above to start the experiment.*"))
+        return
+
+    config_path = config_dropdown.value
+    method = method_dropdown.value
+    seeds = seeds_slider.value
+
+    cmd = [
+        sys.executable, "-m", "experiments.run_multiseed",
+        "--config", config_path,
+        "--method", method,
+        "--seeds", str(seeds),
+        "--resume",
+    ]
+
+    mo.output.replace(mo.md(f"**Running:** `{' '.join(cmd)}`\n\nPlease wait..."))
+
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            cwd=os.path.dirname(os.path.abspath(__file__)),
+        )
+        output = result.stdout + "\n" + result.stderr
+        status = "✅ Complete" if result.returncode == 0 else "❌ Failed"
+        mo.output.replace(
+            mo.vstack([
+                mo.md(f"## {status}"),
+                mo.md(f"```\n{output[-5000:]}\n```"),  # Last 5000 chars
+            ])
+        )
+    except Exception as e:
+        mo.output.replace(mo.md(f"## ❌ Error\n```\n{str(e)}\n```"))
+
+    return
 
 
 @app.cell
