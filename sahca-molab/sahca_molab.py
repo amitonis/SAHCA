@@ -100,25 +100,15 @@ def show_selectors(mo, config_dropdown, method_dropdown, seeds_slider):
 
 
 @app.cell
-def run_experiment(mo, config_dropdown, method_dropdown, seeds_slider):
+def run_experiment(mo):
     import subprocess
     import sys
     import os
 
-    run_button = mo.ui.run_button(label="🚀 Run Experiment")
-    mo.output.replace(run_button)
-    return run_button, subprocess, sys, os
-
-
-@app.cell
-def execute_run(mo, run_button, config_dropdown, method_dropdown, seeds_slider, subprocess, sys, os):
-    if not run_button.value:
-        mo.output.replace(mo.md("*Click the Run button above to start the experiment.*"))
-        return
-
-    config_path = config_dropdown.value
-    method = method_dropdown.value
-    seeds = seeds_slider.value
+    # Run P1 experiment directly (DoorKey-6x6 Randomized, SAHCA, 5 seeds)
+    config_path = "configs/dk6_randomized.yaml"
+    method = "sahca"
+    seeds = 5
 
     cmd = [
         sys.executable, "-m", "experiments.run_multiseed",
@@ -128,7 +118,13 @@ def execute_run(mo, run_button, config_dropdown, method_dropdown, seeds_slider, 
         "--resume",
     ]
 
-    mo.output.replace(mo.md(f"**Running:** `{' '.join(cmd)}`\n\nPlease wait..."))
+    mo.output.replace(
+        mo.vstack([
+            mo.md("## Running P1 Experiment (DoorKey-6x6 Randomized)"),
+            mo.md(f"**Command:** `{' '.join(cmd)}`"),
+            mo.md("Please wait..."),
+        ])
+    )
 
     try:
         result = subprocess.run(
@@ -142,7 +138,7 @@ def execute_run(mo, run_button, config_dropdown, method_dropdown, seeds_slider, 
         mo.output.replace(
             mo.vstack([
                 mo.md(f"## {status}"),
-                mo.md(f"```\n{output[-5000:]}\n```"),  # Last 5000 chars
+                mo.md(f"```\n{output[-5000:]}\n```"),
             ])
         )
     except Exception as e:
