@@ -1,9 +1,12 @@
-logs/*.json
-logs/plots/
-checkpoints/
+sahca-molab/logs/*.json
+sahca-molab/logs/plots/
+sahca-molab/checkpoints/
+sahca-molab/sahca_*_seed*.json
+sahca-molab/sahca_*_seed*.pt
+sahca-molab/*_results_*.json
+sahca-molab/*_checkpoint_*.pt
 __pycache__/
 *.pyc
 .venv/
 *.egg-info/
-!logs/.gitkeep
-!checkpoints/.gitkeep
+!sahca-molab/logs/.gitkeep

@@ -1,0 +1,24 @@
+# P0 smoke test: must pass before any expensive runs.
+# Empty-8x8, SAHCA-Micro, 10K steps, CPU-friendly.
+env:
+  name: "MiniGrid-Empty-8x8-v0"
+  fixed_seed: null
+  dense_reward: false
+
+training:
+  group_size: 16
+  total_env_steps: 10000
+  eval_episodes: 20
+  eval_interval: 2000
+
+policy:
+  obs_dim: 151
+  hidden_dim: 128
+  action_dim: 7
+
+credit_assignment:
+  similarity_threshold: 0.9
+  cross_trajectory_only: true
+  alpha: 0.0
+  beta: 1.0
+  gamma: 0.0

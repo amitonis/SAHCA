@@ -33,13 +33,15 @@ class FlatDirObsWrapper(gym.ObservationWrapper):
         super().__init__(env)
         # 7*7*3 image + 4 direction one-hot
         self.obs_dim = 7 * 7 * 3 + 4  # 151
+        # NOTE: image is normalized to [0, 1]; direction one-hot is {0, 1}.
+        # Previous versions exposed raw 0-255 pixels, which destabilized the CNN.
         self.observation_space = gym.spaces.Box(
-            low=0.0, high=255.0, shape=(self.obs_dim,), dtype=np.float32
+            low=0.0, high=1.0, shape=(self.obs_dim,), dtype=np.float32
         )
 
     def observation(self, obs):
         # obs is (7,7,3) from ImgObsWrapper
-        flat_img = obs.flatten().astype(np.float32)
+        flat_img = obs.flatten().astype(np.float32) / 255.0
 
         # Direction one-hot
         direction = self.unwrapped.agent_dir  # 0-3
@@ -101,8 +103,12 @@ class DenseRewardWrapper(gym.Wrapper):
 
         agent_pos = tuple(self.unwrapped.agent_pos)
         info["agent_pos"] = agent_pos
+        # Always preserve the true sparse MiniGrid reward for fair reporting,
+        # even when dense shaping is used for training.
+        info["sparse_reward"] = float(reward)
 
         if not self.use_dense_reward:
+            info["dense_reward"] = float(reward)
             return obs, reward, terminated, truncated, info
 
         dense_reward = 0.0
@@ -139,6 +145,7 @@ class DenseRewardWrapper(gym.Wrapper):
         if terminated:
             dense_reward += reward  # MiniGrid gives 1 - 0.9*(steps/max_steps)
 
+        info["dense_reward"] = float(dense_reward)
         return obs, dense_reward, terminated, truncated, info
 
 

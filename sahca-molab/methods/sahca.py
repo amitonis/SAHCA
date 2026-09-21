@@ -58,6 +58,7 @@ class SAHCA(CreditAssignmentMethod):
         self.gamma = gamma
         self.threshold = similarity_threshold
         self.cross_trajectory_only = cross_trajectory_only
+        self.last_stats: Dict = {}
 
     def compute_advantages(
         self, trajectory_group: List[List[Dict]]
@@ -187,6 +188,17 @@ class SAHCA(CreditAssignmentMethod):
                 step_i = all_steps[idx]["step_idx"]
                 micro_advs[traj_i][step_i] = float(z_val)
 
+        # Record coverage stats for logging (PLAN P3).
+        n_clustered = int(np.sum(assigned)) if n_steps else 0
+        n_clusters = 0
+        # Re-derive cluster count cheaply: count distinct assigned groups is
+        # tracked implicitly; approximate via clustered fraction here.
+        self.last_stats = {
+            "soft_anchor_coverage": (n_clustered / n_steps) if n_steps else 0.0,
+            "soft_anchor_clustered_steps": n_clustered,
+            "soft_anchor_total_steps": n_steps,
+        }
+        # Fill cluster count on the caller side via _compute path below.
         return micro_advs
 
     def _compute_hindsight(

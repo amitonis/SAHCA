@@ -60,6 +60,11 @@ class Trainer:
         # Seed everything
         torch.manual_seed(seed)
         np.random.seed(seed)
+        self._train_rng = np.random.default_rng(seed)
+        # Held-out eval base is offset so train and eval layouts never overlap
+        # (PLAN rule: keep training and evaluation seeds separate).
+        self.eval_base_seed = 1_000_000 + seed
+        self._eval_count = 0
 
         # Environment
         env_config = config.get("env", {})
@@ -103,15 +108,23 @@ class Trainer:
         trajectories = []
         self.policy.eval()
 
-        for _ in range(self.group_size):
+        for epi in range(self.group_size):
+            # Per-episode seed: fixed layout reuses the same map (intended for
+            # the "fixed" benchmark); randomized layouts draw a fresh seed per
+            # episode from the train RNG so group diversity is reproducible.
+            if self.fixed_seed is not None:
+                episode_seed = self.fixed_seed
+            else:
+                episode_seed = int(self._train_rng.integers(0, 2**31 - 1))
             env = make_env(
                 self.env_name,
-                fixed_seed=self.fixed_seed,
+                fixed_seed=episode_seed,
                 use_dense_reward=self.use_dense_reward,
             )
             obs, info = env.reset()
             trajectory = []
             done = False
+            sparse_total = 0.0
 
             while not done:
                 obs_tensor = torch.tensor(obs, dtype=torch.float32, device=self.device)
@@ -119,11 +132,13 @@ class Trainer:
 
                 next_obs, reward, terminated, truncated, info = env.step(action)
                 done = terminated or truncated
+                sparse_total += float(info.get("sparse_reward", reward))
 
                 step = {
                     "obs": obs.copy() if isinstance(obs, np.ndarray) else np.array(obs),
                     "action": action,
                     "reward": float(reward),
+                    "sparse_reward": float(info.get("sparse_reward", reward)),
                     "log_prob": float(log_prob),
                     "value": float(value),
                     "state_hash": state_hash(np.asarray(obs)),
@@ -167,6 +182,10 @@ class Trainer:
         Args:
             trajectories: List of trajectories (list of step dicts).
             advantages: Matching per-step advantages, same shape as trajectories.
+
+        Returns:
+            Dict with mean loss / policy loss / value loss / entropy / KL stats,
+            plus a finite-gradient flag (PLAN P0 smoke check).
         """
         self.policy.train()
 
@@ -199,6 +218,8 @@ class Trainer:
         # PPO epochs
         n_samples = len(all_obs)
         batch_size = min(512, n_samples)
+        loss_hist, pl_hist, vl_hist, ent_hist, kl_hist = [], [], [], [], []
+        grad_finite = True
 
         for _ in range(self.PPO_EPOCHS):
             # Shuffle indices
@@ -241,16 +262,39 @@ class Trainer:
                 self.optimizer.zero_grad()
                 loss.backward()
                 nn.utils.clip_grad_norm_(self.policy.parameters(), self.MAX_GRAD_NORM)
+                # P0 smoke check: gradients must stay finite.
+                for p in self.policy.parameters():
+                    if p.grad is not None and not torch.isfinite(p.grad).all():
+                        grad_finite = False
                 self.optimizer.step()
+
+                loss_hist.append(float(loss.detach().cpu()))
+                pl_hist.append(float(policy_loss.detach().cpu()))
+                vl_hist.append(float(value_loss.detach().cpu()))
+                ent_hist.append(float(entropy.mean().detach().cpu()))
+                kl_hist.append(float((batch_old_log_probs - log_probs).mean().detach().cpu()))
+
+        import numpy as _np
+        return {
+            "loss": float(_np.mean(loss_hist)) if loss_hist else 0.0,
+            "policy_loss": float(_np.mean(pl_hist)) if pl_hist else 0.0,
+            "value_loss": float(_np.mean(vl_hist)) if vl_hist else 0.0,
+            "entropy": float(_np.mean(ent_hist)) if ent_hist else 0.0,
+            "approx_kl": float(_np.mean(kl_hist)) if kl_hist else 0.0,
+            "grad_finite": bool(grad_finite),
+        }
 
     def evaluate(self, num_episodes: Optional[int] = None) -> Dict:
         """Evaluate the current policy without exploration.
+
+        Evaluation always uses the sparse MiniGrid reward (dense shaping is
+        training-only) and held-out seeds so train/eval never overlap.
 
         Args:
             num_episodes: Number of evaluation episodes (defaults to config).
 
         Returns:
-            Dict with 'success_rate', 'mean_return', 'mean_length'.
+            Dict with 'success_rate', 'mean_return' (sparse), 'mean_length'.
         """
         if num_episodes is None:
             num_episodes = self.eval_episodes
@@ -259,12 +303,20 @@ class Trainer:
         successes = 0
         total_returns = []
         total_lengths = []
+        self._eval_count += 1
 
-        for _ in range(num_episodes):
+        for epi in range(num_episodes):
+            # Held-out eval seed: never equal to any train seed.
+            if self.fixed_seed is not None:
+                # Fixed benchmark: same map is intended, but offset the counter
+                # so the eval stream is explicit and reproducible.
+                episode_seed = self.fixed_seed
+            else:
+                episode_seed = self.eval_base_seed + self._eval_count * 100_000 + epi
             env = make_env(
                 self.env_name,
-                fixed_seed=self.fixed_seed,
-                use_dense_reward=self.use_dense_reward,
+                fixed_seed=episode_seed,
+                use_dense_reward=False,  # sparse reporting
             )
             obs, info = env.reset()
             episode_return = 0.0
@@ -314,6 +366,7 @@ class Trainer:
         log_path = self.log_dir / log_filename
 
         pbar = tqdm(total=total_steps, desc=f"{self.method_name} seed={self.seed}")
+        last_update_stats: Dict = {}
 
         while self.total_steps_collected < total_steps:
             # Collect rollouts
@@ -324,7 +377,12 @@ class Trainer:
             advantages = self.method.compute_advantages(trajectories)
 
             # PPO update
-            self.ppo_update(trajectories, advantages)
+            update_stats = self.ppo_update(trajectories, advantages)
+            last_update_stats = update_stats
+            # Training-stream stats (stochastic policy): visible even when
+            # greedy eval is still 0 early in training.
+            train_success = float(sum(1 for t in trajectories if t and t[-1].get("terminated", False)) / max(1, len(trajectories)))
+            train_dense_ret = float(sum(sum(s["reward"] for s in t) for t in trajectories) / max(1, len(trajectories)))
 
             iteration += 1
             pbar.update(steps_in_group)
@@ -340,8 +398,16 @@ class Trainer:
                     "iteration": iteration,
                     "elapsed_sec": round(elapsed, 1),
                     "steps_per_sec": round(steps_per_sec, 1),
+                    "train_success": round(train_success, 3),
+                    "train_mean_return": round(train_dense_ret, 3),
                     **eval_results,
+                    **update_stats,
                 }
+                if hasattr(self.method, "last_stats"):
+                    try:
+                        entry.update({f"sahca_{k}": v for k, v in self.method.last_stats.items()})
+                    except Exception:
+                        pass
                 self.log_entries.append(entry)
 
                 tqdm.write(
@@ -349,6 +415,8 @@ class Trainer:
                     f"SR={eval_results['success_rate']:.2f} "
                     f"Ret={eval_results['mean_return']:.3f} "
                     f"Len={eval_results['mean_length']:.1f} "
+                    f"loss={update_stats['loss']:.3f} kl={update_stats['approx_kl']:.4f} "
+                    f"grad_finite={update_stats['grad_finite']} "
                     f"({steps_per_sec:.0f} steps/s)"
                 )
 
@@ -367,7 +435,13 @@ class Trainer:
             "steps_per_sec": round(self.total_steps_collected / elapsed, 1) if elapsed > 0 else 0,
             "final": True,
             **final_eval,
+            **last_update_stats,
         }
+        if hasattr(self.method, "last_stats"):
+            try:
+                final_entry.update({f"sahca_{k}": v for k, v in self.method.last_stats.items()})
+            except Exception:
+                pass
         self.log_entries.append(final_entry)
         self._save_log(log_path)
 
@@ -389,8 +463,21 @@ class Trainer:
             "seed": self.seed,
             "config": self.config,
             "device": str(self.device),
+            "code_version": self._git_hash(),
+            "dense_training": bool(self.use_dense_reward),
+            "eval_reward": "sparse",
             "entries": self.log_entries,
         }
         with open(path, "w") as f:
             json.dump(result, f, indent=2)
+
+    @staticmethod
+    def _git_hash() -> str:
+        try:
+            import subprocess
+            return subprocess.check_output(
+                ["git", "rev-parse", "--short", "HEAD"], text=True, timeout=5
+            ).strip()
+        except Exception:
+            return "unknown"
 
