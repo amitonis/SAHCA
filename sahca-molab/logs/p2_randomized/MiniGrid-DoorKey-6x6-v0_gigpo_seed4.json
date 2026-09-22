@@ -1,0 +1,165 @@
+{
+  "config": {
+    "env": {
+      "name": "MiniGrid-DoorKey-6x6-v0",
+      "fixed_seed": null,
+      "dense_reward": true
+    },
+    "training": {
+      "group_size": 64,
+      "total_env_steps": 300000,
+      "eval_interval": 30000,
+      "eval_episodes": 50
+    },
+    "policy": {
+      "obs_dim": 151,
+      "hidden_dim": 256,
+      "action_dim": 7
+    },
+    "credit_assignment": {
+      "similarity_threshold": 0.9,
+      "alpha": 0.0,
+      "beta": 1.0,
+      "gamma": 0.0,
+      "cross_trajectory_only": true
+    }
+  },
+  "method": "GiGPO",
+  "seed": 4,
+  "device": "cuda",
+  "dense_training": true,
+  "eval_reward": "sparse",
+  "entries": [
+    {
+      "success_rate": 0.0,
+      "mean_return": 0.0,
+      "mean_length": 360.0,
+      "step": 45396,
+      "elapsed_sec": 48.85116004943848,
+      "train_success": 0.031,
+      "train_mean_return": -2.887,
+      "loss": 0.02150564095419314,
+      "approx_kl": 0.006251076603722241,
+      "grad_finite": true
+    },
+    {
+      "success_rate": 0.0,
+      "mean_return": 0.0,
+      "mean_length": 360.0,
+      "step": 67823,
+      "elapsed_sec": 75.87220239639282,
+      "train_success": 0.062,
+      "train_mean_return": -2.79,
+      "loss": 0.022324011756361208,
+      "approx_kl": 0.005395513439328748,
+      "grad_finite": true
+    },
+    {
+      "success_rate": 0.0,
+      "mean_return": 0.0,
+      "mean_length": 360.0,
+      "step": 110757,
+      "elapsed_sec": 121.58372116088867,
+      "train_success": 0.141,
+      "train_mean_return": -2.565,
+      "loss": 0.02969292891320101,
+      "approx_kl": 0.003676975584523969,
+      "grad_finite": true
+    },
+    {
+      "success_rate": 0.0,
+      "mean_return": 0.0,
+      "mean_length": 360.0,
+      "step": 133182,
+      "elapsed_sec": 148.54860734939575,
+      "train_success": 0.125,
+      "train_mean_return": -2.685,
+      "loss": 0.027186144069260496,
+      "approx_kl": 0.0037005410783670163,
+      "grad_finite": true
+    },
+    {
+      "success_rate": 0.0,
+      "mean_return": 0.0,
+      "mean_length": 360.0,
+      "step": 154538,
+      "elapsed_sec": 174.0510950088501,
+      "train_success": 0.172,
+      "train_mean_return": -2.388,
+      "loss": 0.03919502119311974,
+      "approx_kl": 0.006506192523548158,
+      "grad_finite": true
+    },
+    {
+      "success_rate": 0.0,
+      "mean_return": 0.0,
+      "mean_length": 360.0,
+      "step": 191543,
+      "elapsed_sec": 215.39202451705933,
+      "train_success": 0.578,
+      "train_mean_return": -1.206,
+      "loss": 0.08333737574353375,
+      "approx_kl": 0.005226224064244889,
+      "grad_finite": true
+    },
+    {
+      "success_rate": 0.0,
+      "mean_return": 0.0,
+      "mean_length": 360.0,
+      "step": 226492,
+      "elapsed_sec": 254.29616856575012,
+      "train_success": 0.516,
+      "train_mean_return": -1.392,
+      "loss": 0.0870078138075769,
+      "approx_kl": 0.005183826925765191,
+      "grad_finite": true
+    },
+    {
+      "success_rate": 0.0,
+      "mean_return": 0.0,
+      "mean_length": 360.0,
+      "step": 241760,
+      "elapsed_sec": 274.3263928890228,
+      "train_success": 0.672,
+      "train_mean_return": -0.845,
+      "loss": 0.12988424816479285,
+      "approx_kl": 0.003875474081723951,
+      "grad_finite": true
+    },
+    {
+      "success_rate": 0.0,
+      "mean_return": 0.0,
+      "mean_length": 360.0,
+      "step": 271255,
+      "elapsed_sec": 307.4393126964569,
+      "train_success": 0.719,
+      "train_mean_return": -0.616,
+      "loss": 0.13535281180821615,
+      "approx_kl": 0.004144529122578237,
+      "grad_finite": true
+    },
+    {
+      "success_rate": 0.0,
+      "mean_return": 0.0,
+      "mean_length": 360.0,
+      "step": 304311,
+      "elapsed_sec": 344.12129259109497,
+      "train_success": 0.906,
+      "train_mean_return": 0.406,
+      "loss": 0.18056823648512363,
+      "approx_kl": 0.007473224833665882,
+      "grad_finite": true
+    },
+    {
+      "success_rate": 0.0,
+      "mean_return": 0.0,
+      "mean_length": 360.0,
+      "step": 304311,
+      "elapsed_sec": 350.0580930709839,
+      "final": true,
+      "loss": 0.18056823648512363,
+      "approx_kl": 0.007473224833665882,
+      "grad_finite": true
+    }
+  ]
+}
